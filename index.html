@@ -67,17 +67,20 @@
         </tbody>
     </table>
     <script>
-        const GITHUB_RAW_URL = "https://raw.githubusercontent.com/lars-menke/kassenbuch/main/transactions.json";
         const GITHUB_API_URL = "https://api.github.com/repos/lars-menke/kassenbuch/contents/transactions.json";
-        const PERSONAL_ACCESS_TOKEN = "DEIN_PERSONAL_ACCESS_TOKEN";
+        const PERSONAL_ACCESS_TOKEN = "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";
 
         const form = document.getElementById('transactionForm');
         const transactionsTable = document.getElementById('transactionsTable');
 
         async function loadTransactions() {
             try {
-                const response = await axios.get(GITHUB_RAW_URL);
-                const transactions = response.data || [];
+                const response = await axios.get(GITHUB_API_URL, {
+                    headers: {
+                        Authorization: `token ${PERSONAL_ACCESS_TOKEN}`
+                    }
+                });
+                const transactions = JSON.parse(atob(response.data.content)) || [];
                 transactions.forEach(addTransactionToTable);
             } catch (error) {
                 console.error("Fehler beim Laden der Transaktionen:", error);
