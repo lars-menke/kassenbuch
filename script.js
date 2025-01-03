@@ -23,13 +23,21 @@ function loadTransactions() {
         const transactions = snapshot.val() || {};
         transactionsTable.innerHTML = ''; // Tabelle leeren
         Object.values(transactions).forEach(addTransactionToTable);
+        console.log("Geladene Transaktionen:", transactions);
     });
 }
 
 // Transaktion speichern
 function saveTransaction(transaction) {
+    console.log("Speichere Transaktion:", transaction);
     const newTransactionKey = firebase.database().ref().child('transactions').push().key;
-    firebase.database().ref(`transactions/${newTransactionKey}`).set(transaction);
+    firebase.database().ref(`transactions/${newTransactionKey}`).set(transaction, (error) => {
+        if (error) {
+            console.error("Fehler beim Speichern der Transaktion:", error);
+        } else {
+            console.log("Transaktion erfolgreich gespeichert.");
+        }
+    });
 }
 
 // Transaktion zur Tabelle hinzufügen
