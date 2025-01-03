@@ -67,17 +67,13 @@
         </tbody>
     </table>
     <script>
-        // GitHub Raw File URL
         const GITHUB_RAW_URL = "https://raw.githubusercontent.com/lars-menke/kassenbuch/main/transactions.json";
-
-        // GitHub Personal Access Token (falls PUT erforderlich)
-        const GITHUB_API_URL = "https://api.github.com/repos/USERNAME/REPO_NAME/contents/transactions.json";
-        const PERSONAL_ACCESS_TOKEN = "DEIN_PERSONAL_ACCESS_TOKEN"; // Für Push erforderlich
+        const GITHUB_API_URL = "https://api.github.com/repos/lars-menke/kassenbuch/contents/transactions.json";
+        const PERSONAL_ACCESS_TOKEN = "DEIN_PERSONAL_ACCESS_TOKEN";
 
         const form = document.getElementById('transactionForm');
         const transactionsTable = document.getElementById('transactionsTable');
 
-        // Transaktionen laden
         async function loadTransactions() {
             try {
                 const response = await axios.get(GITHUB_RAW_URL);
@@ -88,19 +84,20 @@
             }
         }
 
-        // Transaktion speichern
         async function saveTransaction(transaction) {
             try {
-                // Bestehende Daten abrufen
-                const response = await axios.get(GITHUB_RAW_URL);
-                const existingTransactions = response.data || [];
+                const response = await axios.get(GITHUB_API_URL, {
+                    headers: {
+                        Authorization: `token ${PERSONAL_ACCESS_TOKEN}`
+                    }
+                });
+                const existingTransactions = JSON.parse(atob(response.data.content)) || [];
                 const updatedTransactions = [...existingTransactions, transaction];
 
-                // Neue Daten per GitHub API hochladen
                 await axios.put(GITHUB_API_URL, {
                     message: "Transaktion hinzugefügt",
                     content: btoa(JSON.stringify(updatedTransactions, null, 2)),
-                    sha: response.data.sha // SHA für die Datei (wird von GitHub benötigt)
+                    sha: response.data.sha
                 }, {
                     headers: {
                         Authorization: `token ${PERSONAL_ACCESS_TOKEN}`
@@ -113,7 +110,6 @@
             }
         }
 
-        // Transaktion zur Tabelle hinzufügen
         function addTransactionToTable({ amount, category, description, person, timestamp }) {
             const row = document.createElement('tr');
             const formattedTimestamp = new Date(timestamp).toLocaleString();
@@ -128,7 +124,6 @@
             transactionsTable.appendChild(row);
         }
 
-        // Formular-Event
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
 
@@ -144,7 +139,6 @@
             form.reset();
         });
 
-        // Lade Transaktionen beim Start
         loadTransactions();
     </script>
 </body>
