@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kassenbuch</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,22 +25,6 @@
         }
         .form-group {
             margin-bottom: 10px;
-        }
-        .btn {
-            cursor: pointer;
-            padding: 5px 10px;
-            margin: 0 5px;
-            border: none;
-            color: white;
-        }
-        .btn-edit {
-            background-color: #4CAF50;
-        }
-        .btn-delete {
-            background-color: #f44336;
-        }
-        .btn-reset {
-            background-color: #ff9800;
         }
     </style>
 </head>
@@ -65,9 +50,7 @@
             <label for="person">Buchung vorgenommen von:</label>
             <input type="text" id="person" required>
         </div>
-        <input type="hidden" id="transactionId">
         <button type="submit">Speichern</button>
-        <button type="button" id="resetButton" class="btn btn-reset">Zurücksetzen</button>
     </form>
     <h2>Übersicht</h2>
     <table>
@@ -78,51 +61,62 @@
                 <th>Beschreibung</th>
                 <th>Person</th>
                 <th>Datum & Uhrzeit</th>
-                <th>Saldo (€)</th>
-                <th>Aktionen</th>
             </tr>
         </thead>
         <tbody id="transactionsTable">
         </tbody>
     </table>
     <script>
+        // GitHub Raw File URL
+        const GITHUB_RAW_URL = "https://raw.githubusercontent.com/USERNAME/REPO_NAME/BRANCH/transactions.json";
+
+        // GitHub Personal Access Token (falls PUT erforderlich)
+        const GITHUB_API_URL = "https://api.github.com/repos/USERNAME/REPO_NAME/contents/transactions.json";
+        const PERSONAL_ACCESS_TOKEN = "DEIN_PERSONAL_ACCESS_TOKEN"; // Für Push erforderlich
+
         const form = document.getElementById('transactionForm');
         const transactionsTable = document.getElementById('transactionsTable');
-        const resetButton = document.getElementById('resetButton');
-        const LOCAL_STORAGE_KEY = "transactions";
 
-        // Funktion zum Laden gespeicherter Transaktionen
-        function loadTransactions() {
-            transactionsTable.innerHTML = ''; // Tabelle zurücksetzen
-            const transactions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
-            let saldo = 0;
-
-            transactions.forEach(transaction => {
-                saldo += transaction.category === "Einnahme" ? parseFloat(transaction.amount) : -parseFloat(transaction.amount);
-                addTransactionToTable(transaction, saldo);
-            });
-        }
-
-        // Funktion zum Speichern neuer oder bearbeiteter Transaktionen
-        function saveTransaction(transaction) {
-            const transactions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
-            const existingIndex = transactions.findIndex(t => t.id === transaction.id);
-
-            if (existingIndex > -1) {
-                transactions[existingIndex] = transaction; // Update bestehende Transaktion
-            } else {
-                transactions.push(transaction); // Neue Transaktion hinzufügen
+        // Transaktionen laden
+        async function loadTransactions() {
+            try {
+                const response = await axios.get(GITHUB_RAW_URL);
+                const transactions = response.data || [];
+                transactions.forEach(addTransactionToTable);
+            } catch (error) {
+                console.error("Fehler beim Laden der Transaktionen:", error);
             }
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(transactions));
         }
 
-        // Funktion zum Hinzufügen einer Transaktion zur Tabelle
-        function addTransactionToTable({ id, amount, category, description, person, timestamp }, saldo) {
-            const row = document.createElement('tr');
-            row.dataset.id = id;
+        // Transaktion speichern
+        async function saveTransaction(transaction) {
+            try {
+                // Bestehende Daten abrufen
+                const response = await axios.get(GITHUB_RAW_URL);
+                const existingTransactions = response.data || [];
+                const updatedTransactions = [...existingTransactions, transaction];
 
-            const formattedDate = new Date(timestamp);
-            const formattedTimestamp = `${formattedDate.getDate().toString().padStart(2, '0')}.${(formattedDate.getMonth() + 1).toString().padStart(2, '0')}.${formattedDate.getFullYear()} ${formattedDate.getHours().toString().padStart(2, '0')}:${formattedDate.getMinutes().toString().padStart(2, '0')}`;
+                // Neue Daten per GitHub API hochladen
+                await axios.put(GITHUB_API_URL, {
+                    message: "Transaktion hinzugefügt",
+                    content: btoa(JSON.stringify(updatedTransactions, null, 2)),
+                    sha: response.data.sha // SHA für die Datei (wird von GitHub benötigt)
+                }, {
+                    headers: {
+                        Authorization: `token ${PERSONAL_ACCESS_TOKEN}`
+                    }
+                });
+
+                addTransactionToTable(transaction);
+            } catch (error) {
+                console.error("Fehler beim Speichern der Transaktion:", error);
+            }
+        }
+
+        // Transaktion zur Tabelle hinzufügen
+        function addTransactionToTable({ amount, category, description, person, timestamp }) {
+            const row = document.createElement('tr');
+            const formattedTimestamp = new Date(timestamp).toLocaleString();
 
             row.innerHTML = `
                 <td>${amount}</td>
@@ -130,65 +124,28 @@
                 <td>${description}</td>
                 <td>${person}</td>
                 <td>${formattedTimestamp}</td>
-                <td>${saldo.toFixed(2)}</td>
-                <td>
-                    <button class="btn btn-edit" onclick="editTransaction('${id}')">Bearbeiten</button>
-                    <button class="btn btn-delete" onclick="deleteTransaction('${id}')">Löschen</button>
-                </td>
             `;
             transactionsTable.appendChild(row);
         }
 
-        // Funktion zum Bearbeiten einer Transaktion
-        function editTransaction(id) {
-            const transactions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
-            const transaction = transactions.find(t => t.id === id);
-
-            if (transaction) {
-                document.getElementById('amount').value = transaction.amount;
-                document.getElementById('category').value = transaction.category;
-                document.getElementById('description').value = transaction.description;
-                document.getElementById('person').value = transaction.person;
-                document.getElementById('transactionId').value = transaction.id;
-            }
-        }
-
-        // Funktion zum Löschen einer Transaktion
-        function deleteTransaction(id) {
-            let transactions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
-            transactions = transactions.filter(t => t.id !== id);
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(transactions));
-            loadTransactions();
-        }
-
-        // Event-Listener für das Formular
-        form.addEventListener('submit', (event) => {
+        // Formular-Event
+        form.addEventListener('submit', async (event) => {
             event.preventDefault();
 
             const amount = document.getElementById('amount').value;
             const category = document.getElementById('category').value;
             const description = document.getElementById('description').value;
             const person = document.getElementById('person').value;
-            const id = document.getElementById('transactionId').value || `${new Date().toISOString()}-${Math.random().toString(36).substr(2, 9)}`;
-            const timestamp = id.split("-")[0];
+            const timestamp = new Date().toISOString();
 
-            const transaction = { id, amount, category, description, person, timestamp };
-            saveTransaction(transaction);
+            const transaction = { amount, category, description, person, timestamp };
+            await saveTransaction(transaction);
 
-            loadTransactions(); // Tabelle aktualisieren
             form.reset();
         });
 
-        // Event-Listener für den Reset-Button
-        resetButton.addEventListener('click', () => {
-            if (confirm("Möchten Sie wirklich das gesamte Kassenbuch zurücksetzen?")) {
-                localStorage.removeItem(LOCAL_STORAGE_KEY);
-                loadTransactions();
-            }
-        });
-
-        // Lade gespeicherte Transaktionen beim Laden der Seite
-        window.addEventListener('load', loadTransactions);
+        // Lade Transaktionen beim Start
+        loadTransactions();
     </script>
 </body>
 </html>
