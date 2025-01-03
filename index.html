@@ -68,7 +68,7 @@
     </table>
     <script>
         const GITHUB_API_URL = "https://api.github.com/repos/lars-menke/kassenbuch/contents/transactions.json";
-        const PERSONAL_ACCESS_TOKEN = "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";
+        const PERSONAL_ACCESS_TOKEN = "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";
 
         const form = document.getElementById('transactionForm');
         const transactionsTable = document.getElementById('transactionsTable');
@@ -80,6 +80,7 @@
                         Authorization: `token ${PERSONAL_ACCESS_TOKEN}`
                     }
                 });
+
                 const transactions = JSON.parse(atob(response.data.content)) || [];
                 transactions.forEach(addTransactionToTable);
             } catch (error) {
@@ -94,6 +95,7 @@
                         Authorization: `token ${PERSONAL_ACCESS_TOKEN}`
                     }
                 });
+
                 const existingTransactions = JSON.parse(atob(response.data.content)) || [];
                 const updatedTransactions = [...existingTransactions, transaction];
 
