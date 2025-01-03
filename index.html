@@ -1,65 +1,45 @@
-// Firebase-Konfiguration
-const firebaseConfig = {
-    apiKey: "AIzaSyDcgwmt0ZsXay_-Rn_2mF0aVvB9mYlPXEU",
-    authDomain: "kassenbuch-16f85.firebaseapp.com",
-    databaseURL: "https://kassenbuch-16f85-default-rtdb.firebaseio.com",
-    projectId: "kassenbuch-16f85",
-    storageBucket: "kassenbuch-16f85.firebasestorage.app",
-    messagingSenderId: "50657610211",
-    appId: "1:50657610211:web:a74d5770ba6f060e7eb8d6",
-    measurementId: "G-8GJW3NLPHF"
-};
-
-// Firebase initialisieren
-const app = firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-const form = document.getElementById('transactionForm');
-const transactionsTable = document.getElementById('transactionsTable');
-
-// Transaktionen laden
-function loadTransactions() {
-    firebase.database().ref('transactions').on('value', (snapshot) => {
-        const transactions = snapshot.val() || {};
-        transactionsTable.innerHTML = ''; // Tabelle leeren
-        Object.values(transactions).forEach(addTransactionToTable);
-    });
-}
-
-// Transaktion speichern
-function saveTransaction(transaction) {
-    const newTransactionKey = firebase.database().ref().child('transactions').push().key;
-    firebase.database().ref(`transactions/${newTransactionKey}`).set(transaction);
-}
-
-// Transaktion zur Tabelle hinzufügen
-function addTransactionToTable({ amount, category, description, timestamp }) {
-    const row = document.createElement('tr');
-    const formattedTimestamp = new Date(timestamp).toLocaleString();
-
-    row.innerHTML = `
-        <td>${amount.toFixed(2)}</td>
-        <td>${category}</td>
-        <td>${description}</td>
-        <td>${formattedTimestamp}</td>
-    `;
-    transactionsTable.appendChild(row);
-}
-
-// Formular-Event-Listener
-form.addEventListener('submit', (event) => {
-    event.preventDefault();
-
-    const amount = parseFloat(document.getElementById('amount').value);
-    const category = document.getElementById('category').value;
-    const description = document.getElementById('description').value;
-    const timestamp = new Date().toISOString();
-
-    const transaction = { amount, category, description, timestamp };
-    saveTransaction(transaction);
-
-    form.reset();
-});
-
-// Lade Transaktionen beim Start
-loadTransactions();
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kassenbuch mit Firebase</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Digitales Kassenbuch mit Firebase</h1>
+    <form id="transactionForm">
+        <div class="form-group">
+            <label for="amount">Betrag (€):</label>
+            <input type="number" id="amount" step="0.01" required>
+        </div>
+        <div class="form-group">
+            <label for="category">Kategorie:</label>
+            <select id="category" required>
+                <option value="Einnahme">Einnahme</option>
+                <option value="Ausgabe">Ausgabe</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="description">Beschreibung:</label>
+            <input type="text" id="description" required>
+        </div>
+        <button type="submit">Speichern</button>
+    </form>
+    <h2>Übersicht</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Betrag (€)</th>
+                <th>Kategorie</th>
+                <th>Beschreibung</th>
+                <th>Datum & Uhrzeit</th>
+            </tr>
+        </thead>
+        <tbody id="transactionsTable"></tbody>
+    </table>
+    <script src="script.js"></script>
+</body>
+</html>
